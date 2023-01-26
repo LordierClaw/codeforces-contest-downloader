@@ -1,0 +1,12 @@
+{
+    "login" : {
+        "handle" : "",
+        "password" : ""
+    },
+    "api": {
+        "key" : "",
+        "secret" : ""
+    },
+    "groupId" : "",
+    "contestId" : ""
+}
