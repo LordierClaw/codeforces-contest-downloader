@@ -8,5 +8,9 @@
         "secret" : ""
     },
     "groupId" : "",
-    "contestId" : ""
+    "contestId" : "",
+    "dolos": {
+        "language" : "cpp",
+        "file_ext": "cpp"
+    }
 }
