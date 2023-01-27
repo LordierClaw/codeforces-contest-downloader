@@ -3,7 +3,7 @@ from CFDownloader import CFDownloader
 import codecs
 import json
 import time
-from os import system, name, makedirs, path
+from os import system, name, makedirs, path, chdir
 
 settings = json.load(open("settings.json"))
 apiKey = settings["api"]["key"]
@@ -89,8 +89,9 @@ def runDolos():
     print("Running dolos ...")
     lang = settings["dolos"]["language"]
     fileExt = settings["dolos"]["file_ext"]
-    command = f"dolos -f web -l {lang} \\download\\*.{fileExt}"
-    system("dolos -f web -l")
+    command = f"dolos -f web -l {lang} *.{fileExt}"
+    chdir(path.abspath("download"))
+    system(command)
 
 def doEverything():
     getContestInformation(returnable=False)
