@@ -10,8 +10,10 @@ Note:
 
 - You need an account that has manager permission
 
-- To get APIKey and APISecret, you need to generate one in codeforces
+- To get APIKey and APISecret, you need to generate one in codeforces (https://codeforces.com/settings/api)
 
 - [Dolos](https://github.com/dodona-edu/dolos) is used for plagiarism detection only. You don't have to install it if not needed.
+
+- https://dolos.ugent.be/server/#/
 
 After that, you can run the script normally. The results will be located at `download` folder
