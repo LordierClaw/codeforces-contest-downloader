@@ -31,7 +31,7 @@ class CFDownloader:
             error_occured = True
         while error_occured:
             try:
-                self.__browser.open(proxyurl, timeout=timeout)
+                self.__browser.open(url, timeout=timeout)
                 error_occured = False
             except mechanize.URLError:
                 error_occured = True
