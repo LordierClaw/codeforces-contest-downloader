@@ -1,4 +1,18 @@
 import requests, hashlib, random, time
+from requests.packages.urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
+retry_strategy = Retry(
+    total=10,  # Maximum number of retries
+    backoff_factor=2,  # Exponential backoff factor (e.g., 2 means 1, 2, 4, 8 seconds, ...)
+    status_forcelist=[429, 500, 502, 503, 504, 522, 524, 401, 403, 404],  # Status codes to retry
+)
+
+adapter = HTTPAdapter(max_retries=retry_strategy)
+
+http = requests.Session()
+http.mount("https://", adapter)
+http.mount("http://", adapter)
+
 
 class ContestParser:
     def __init__(self, groupId, contestId, APIKey, APISecret) -> None:
@@ -16,7 +30,7 @@ class ContestParser:
             "&time=" + currentTime + "#" + self.apiSecret
         hash = hashlib.sha512(apiSig.encode()).hexdigest()
         apiCommand = f"https://codeforces.com/api/{methodName}?groupCode={self.groupId}&contestId={self.contestId}{optionalMethod}&apiKey={self.apiKey}&time={currentTime}&apiSig={rand+hash}"
-        data = requests.get(apiCommand).json()
+        data = http.get(apiCommand).json()
         return data["status"], data["result"]
 
     def __getStandings(self):
