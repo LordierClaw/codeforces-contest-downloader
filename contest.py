@@ -79,6 +79,7 @@ def downloadAllSubmission(returnable=True):
                 with codecs.open(name, "w", encoding="utf-8") as output:
                     output.write(cf.getSourceCode(groupId, contestId, subId))
                 completedCount += 1
+                print(f"Saved: {name}, {completedCount} files downloaded and saved, waiting 1 second to avoid being banned")
                 time.sleep(1)
     print(f"Completed: {completedCount} files downloaded and saved")
     if (returnable == True):

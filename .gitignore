@@ -1,3 +1,15 @@
+#Crawl data, env
+download/
+bin/
+pyvenv.cfg
+include/
+lib/
+lib64/
+settings.json
+cf/
+database.json
+*.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -127,3 +139,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
