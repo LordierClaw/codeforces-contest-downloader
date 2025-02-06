@@ -1,11 +1,12 @@
 import mechanize
 from http.cookiejar import CookieJar
 import time
-from urllib.parse import quote
-
-from lxml import html
-from lxml.html import html5parser as etree
 from pyquery import PyQuery as pq
+
+import time
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.by import By
+import undetected_chromedriver as uc  
 
 
 class CFDownloader:
@@ -14,49 +15,75 @@ class CFDownloader:
         self.__browser = mechanize.Browser()
         self.__browser.set_handle_robots(False)
         self.__browser.set_cookiejar(self.__cookieJar)
-        self.__browser.addheaders = [('User-agent', 'Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.1) Gecko/2008071615 Fedora/3.0.1-1.fc9 Firefox/3.0.1')]
+        # Khởi tạo undetected_chromedriver với các tùy chọn
+        chrome_options = uc.ChromeOptions()
+        # Nếu không muốn hiển thị trình duyệt, thêm tùy chọn --headless
+        # chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36")
+        try:
+            self.__driver = uc.Chrome(options=chrome_options)
+        except Exception as e:
+            print("Lỗi khi khởi tạo Chrome driver:", e) # Hãy cập nhật Chrome và undetected_chromedriver
+            
 
     def retryMechanize(self, url, timeout):
-        proxyurl = "https://api.scrapingant.com/v2/general?url="
-        #convert url encode to http encoding
-        encoded_url = quote(url)
-        proxyurl += encoded_url
-        proxyurl += "&x-api-key=718a20a35d174225904cf787680ddc6c"
-
-
-        error_occured = False
-        try: 
+        try:
             self.__browser.open(url, timeout=timeout)
         except mechanize.URLError:
-            error_occured = True
-        while error_occured:
-            try:
-                self.__browser.open(url, timeout=timeout)
-                error_occured = False
-            except mechanize.URLError:
-                error_occured = True
-                print("Error occured, retrying after 30 seconds...")
-                time.sleep(30)
-        
+            print("Error occurred, retrying after 30 seconds...")
+            time.sleep(30)
+            self.__browser.open(url, timeout=timeout)
+
+        self.__driver.get(url)
+        WebDriverWait(self.__driver, 60).until(
+            lambda driver: "Please wait" not in driver.page_source and
+                            driver.execute_script("return document.readyState") == "complete"
+        )
+        return self.__driver.page_source
 
     def login(self, handle, password):
-        loginUrl = "https://codeforces.com/enter"
-        self.retryMechanize(loginUrl, 10)
-        self.__browser.select_form(id="enterForm")
-        self.__browser.form.find_control(id="handleOrEmail").value = handle
-        self.__browser.form.find_control(id="password").value = password
-        self.__browser.submit()
+        loginUrl = "https://mirror.codeforces.com/enter"
+        self.__driver.get(loginUrl)
+        # Chờ đến khi xuất hiện trường đăng nhập (handle/email)
+        WebDriverWait(self.__driver, 30).until(
+            lambda d: d.find_element(By.NAME, "handleOrEmail")
+        )
+
+        try:
+            # Tìm các trường đăng nhập và điền thông tin
+            handle_input = self.__driver.find_element(By.NAME, "handleOrEmail")
+            password_input = self.__driver.find_element(By.NAME, "password")
+            handle_input.clear()
+            handle_input.send_keys(handle)
+            password_input.clear()
+            password_input.send_keys(password)
+            
+            # Nhấn nút đăng nhập (tìm nút bằng input[type=submit])
+            login_button = self.__driver.find_element(By.XPATH, "//input[@type='submit']")
+            time.sleep(3)
+            print("Login attempted via Selenium. Check browser state for success.")
+            login_button.click()
+            
+        except Exception as e:
+            print("Login process encountered an error:", e)
     
     def getSourceCode(self, groupId, contestId, submissionId):
-        data = ""
+        url = f"https://mirror.codeforces.com/group/{groupId}/contest/{contestId}/submission/{submissionId}"
+        html_content = self.retryMechanize(url, 10)
+        # Nếu html_content rỗng, thử dùng Selenium page_source
+        if not html_content or "program-source-text" not in html_content:
+            print("Mechanize cant get source code, trying to extract from Selenium...")
+            html_content = self.__driver.page_source
+
         try:
-            url = f"https://codeforces.com/group/{groupId}/contest/{contestId}/submission/{submissionId}"
-            self.retryMechanize(url, 10)
-            tree2 = html.fromstring(self.__browser.response().read())
-            data = etree.fromstring(str(pq(tree2.xpath('//*[@id=\"program-source-text\"]'))))
-            data = data.text
-            data = data.replace("<pre id=\"program-source-text\" class=\"prettyprint lang-cpp linenums program-source\" style=\"padding: 0.5em;\">","")
-        except:
-            data = ""
-        return data
+            # Sử dụng PyQuery trực tiếp từ html_content
+            doc = pq(html_content)
+            code_text = doc("#program-source-text").text()
+            if not code_text:
+                print("Not found code in page, trying to extract from HTML...")
+            return code_text
+        except Exception as e:
+            print("Error parsing source code:", e)
+            return ""
     

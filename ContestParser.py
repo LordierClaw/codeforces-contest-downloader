@@ -29,12 +29,12 @@ class ContestParser:
             "&contestId=" + self.contestId + "&groupCode=" + self.groupId + optionalMethod + \
             "&time=" + currentTime + "#" + self.apiSecret
         hash = hashlib.sha512(apiSig.encode()).hexdigest()
-        apiCommand = f"https://codeforces.com/api/{methodName}?groupCode={self.groupId}&contestId={self.contestId}{optionalMethod}&apiKey={self.apiKey}&time={currentTime}&apiSig={rand+hash}"
+        apiCommand = f"https://mirror.codeforces.com/api/{methodName}?groupCode={self.groupId}&contestId={self.contestId}{optionalMethod}&apiKey={self.apiKey}&time={currentTime}&apiSig={rand+hash}"
         data = http.get(apiCommand).json()
         return data["status"], data["result"]
 
     def __getStandings(self):
-        status, data = self.__request("contest.standings")
+        data = self.__request("contest.standings")
         problems = []
         for problem in data["problems"]:
             problems.append(problem["index"])
@@ -47,7 +47,7 @@ class ContestParser:
         status, submissions = self.__request("contest.status", f"&handle={handle}")
         ACSubs = {}
         for problem in problemList:
-            ACSubs[problem] = 0;
+            ACSubs[problem] = 0
         for i in range(len(submissions)-1, -1, -1):
             if submissions[i]["verdict"] == "OK":
                 problemId = submissions[i]["problem"]["index"] #in alphabet

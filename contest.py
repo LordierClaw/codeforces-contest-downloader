@@ -3,6 +3,12 @@ from CFDownloader import CFDownloader
 import codecs
 import json
 import time
+import shutil
+import webbrowser
+import subprocess
+import glob
+import socket
+import os
 from os import system, name, makedirs, path, chdir
 
 settings = json.load(open("settings.json"))
@@ -10,6 +16,7 @@ apiKey = settings["api"]["key"]
 apiSecret = settings["api"]["secret"]
 groupId = settings["groupId"]
 contestId = settings["contestId"]
+current_dir = os.getcwd()
 
 def clear():
     if name == 'nt':
@@ -54,8 +61,8 @@ def getContestInformation(returnable=True):
 
 def downloadAllSubmission(returnable=True):
     clear()
+    remove_folders(current_dir, "download")
     print("Start scraping and saving code...")
-    #checking download folder and database.json exists
     makedirs("./download/", exist_ok=True)
     if path.exists("database.json") == False:
         print("database.json not found! Please return to the menu and get contest's information first!")
@@ -87,18 +94,54 @@ def downloadAllSubmission(returnable=True):
 
 def runDolos():
     clear()
-    print("Running dolos ...")
     lang = settings["dolos"]["language"]
-    fileExt = settings["dolos"]["file_ext"]
-    command = f"dolos -f web -l {lang} *.{fileExt}"
+    # Zip all files in download folder to dolos.zip
+    shutil.make_archive("dolos", "zip", "download")
+    # command = f"dolos -f web -l {lang} dolos.zip" # If you can download dolos CLI 
+    command = f'docker run --init -p 3000:3000 -v "{current_dir}:/dolos" ghcr.io/dodona-edu/dolos-cli -f web -l {lang} --host 0.0.0.0 dolos.zip'
+    
+    print("Running: " + command)
+    if is_port_in_use(3000):
+        print("Port 3000 is in use. Killing the container...")
+        kill_container_on_port(3000)
+        # Wait for the container to stop
+        time.sleep(2)
     chdir(path.abspath("download"))
-    system(command)
+    subprocess.Popen(command, shell=True)
+    print("Waiting for container to initialize...") # If you get error here, please open Docker Desktop first
+    time.sleep(3)
+    webbrowser.open("http://localhost:3000")
+    time.sleep(3)
+    remove_folders(current_dir, "dolos-report-*")
+
+def kill_container_on_port(port):
+    # Take the container that uses the port
+    try:
+        cmd = f"docker ps --filter \"publish={port}\" --format \"{{{{.ID}}}}\""
+        container_ids = subprocess.check_output(cmd, shell=True, text=True).strip().splitlines()
+        for cid in container_ids:
+            subprocess.call(f"docker kill {cid}", shell=True)
+    except Exception as e:
+        print(f"Lỗi khi dừng container: {e}")
+
+def is_port_in_use(port, host="localhost"):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex((host, port)) == 0
+
+def remove_folders(directory, pattern):
+    pattern = os.path.join(directory, pattern)
+    for folder in glob.glob(pattern):
+        if os.path.isdir(folder):
+            try:
+                shutil.rmtree(folder)
+                print(f"Removed directory: {folder}")
+            except Exception as e:
+                print(f"Error removing folder {folder}: {e}")
 
 def doEverything():
     getContestInformation(returnable=False)
     downloadAllSubmission(returnable=False)
     runDolos()
-
 def main():
     while(True):
         option = displayMenu()
